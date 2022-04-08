@@ -1,0 +1,12 @@
+database:
+  dbname: databasename
+  username: user
+  password: password
+  host: 127.0.0.1
+  port: 3306
+Redis:
+  redishost: "localhost"
+  Redisport: "6379"
+server:
+  port: "7071"
+  secret: "mySecretKey"
