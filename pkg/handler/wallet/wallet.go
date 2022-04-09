@@ -2,7 +2,6 @@ package wallet
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -19,9 +18,8 @@ type Controller struct {
 }
 
 var (
-	greaterThan0 = "amount must be greater than 0"
-	wrongIdType  = "wrong id data type, should be of type int"
-	parseFailed  = "Failed to parse request body"
+	wrongIdType = "wrong id data type, should be of type int"
+	parseFailed = "Failed to parse request body"
 )
 
 func (base *Controller) GetBalance(c *gin.Context) {
@@ -76,12 +74,6 @@ func (base *Controller) CreditBalance(c *gin.Context) {
 		return
 	}
 
-	if req.Amount <= 0 {
-		rd := utility.BuildErrorResponse(http.StatusBadRequest, "error", greaterThan0, fmt.Errorf(greaterThan0), nil)
-		c.JSON(http.StatusBadRequest, rd)
-		return
-	}
-
 	service := wallet.NewWalletService(repository.NewWallet())
 	wallet, code, err := service.CreditWallet(ctx, req, walletID)
 	if err != nil {
@@ -118,12 +110,6 @@ func (base *Controller) DebitBalance(c *gin.Context) {
 	err = base.Validate.Struct(&req)
 	if err != nil {
 		rd := utility.BuildErrorResponse(http.StatusBadRequest, "error", "Validation failed", utility.ValidationResponse(err, base.Validate), nil)
-		c.JSON(http.StatusBadRequest, rd)
-		return
-	}
-
-	if req.Amount <= 0 {
-		rd := utility.BuildErrorResponse(http.StatusBadRequest, "error", greaterThan0, fmt.Errorf(greaterThan0), nil)
 		c.JSON(http.StatusBadRequest, rd)
 		return
 	}
