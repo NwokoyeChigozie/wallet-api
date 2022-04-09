@@ -16,6 +16,7 @@ func Logger() gin.HandlerFunc {
 	//Set output
 	logger.Out = os.Stdout
 	logger.SetFormatter(&logrus.JSONFormatter{})
+	// logger.SetFormatter(&logrus.TextFormatter{})
 
 	//Set log level
 	logger.SetLevel(logrus.DebugLevel)

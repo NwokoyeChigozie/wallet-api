@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/NwokoyeChigozie/quik_task/internal/model"
-	"github.com/NwokoyeChigozie/quik_task/pkg/repository/storage"
 	"github.com/NwokoyeChigozie/quik_task/pkg/repository/storage/mysql"
 	"github.com/NwokoyeChigozie/quik_task/utility"
 )
@@ -24,11 +23,10 @@ func (u *User) CreateUser(ctx context.Context, form model.CreateUserRequestModel
 
 	// checking if a user with this email already exists
 	var (
-		service   = storage.NewMysqlStorageService(&u.db)
 		checkUser = model.User{}
 	)
 
-	err1, _ := service.GetWithCondition("email = ?", &checkUser, form.Email)
+	err1, _ := u.db.GetWithCondition("email = ?", &checkUser, form.Email)
 	if err1 == nil {
 		return &checkUser, 400, fmt.Errorf("user already exists with this email")
 	}
@@ -49,7 +47,7 @@ func (u *User) CreateUser(ctx context.Context, form model.CreateUserRequestModel
 	}
 	fmt.Println(user)
 
-	err = service.Create(&user)
+	err = u.db.Create(&user)
 	if err != nil {
 		return &checkUser, 500, err
 	}
@@ -58,7 +56,7 @@ func (u *User) CreateUser(ctx context.Context, form model.CreateUserRequestModel
 		UserID:  user.ID,
 		Balance: "0.00",
 	}
-	err = service.Create(&wallet)
+	err = u.db.Create(&wallet)
 	if err != nil {
 		return &checkUser, 500, err
 	}
@@ -69,7 +67,7 @@ func (u *User) CreateUser(ctx context.Context, form model.CreateUserRequestModel
 		Amount: "0.00",
 	}
 
-	err = service.Create(&transaction)
+	err = u.db.Create(&transaction)
 	if err != nil {
 		return &checkUser, 500, err
 	}
@@ -82,18 +80,17 @@ func (u *User) CreateUser(ctx context.Context, form model.CreateUserRequestModel
 func (u *User) GetUser(ctx context.Context, userID int) (*model.User, int, error) {
 
 	var (
-		user    = model.User{}
-		wallet  = model.Wallet{}
-		service = storage.NewMysqlStorageService(&u.db)
+		user   = model.User{}
+		wallet = model.Wallet{}
 	)
 
 	// checking if a user with this email already exists
-	err1, _ := service.GetWithCondition("id = ?", &user, userID)
+	err1, _ := u.db.GetWithCondition("id = ?", &user, userID)
 	if err1 != nil {
 		return &user, 400, fmt.Errorf("user does not exist")
 	}
 
-	_, err := service.GetWithCondition("user_id = ?", &wallet, userID)
+	_, err := u.db.GetWithCondition("user_id = ?", &wallet, userID)
 	if err != nil {
 		return &user, 500, err
 	}
@@ -104,12 +101,11 @@ func (u *User) GetUser(ctx context.Context, userID int) (*model.User, int, error
 
 func (u *User) Login(ctx context.Context, form model.LoginRequestModel) (*model.User, int, error) {
 	var (
-		service = storage.NewMysqlStorageService(&u.db)
-		user    = model.User{}
-		wallet  = model.Wallet{}
+		user   = model.User{}
+		wallet = model.Wallet{}
 	)
 
-	err1, _ := service.GetWithCondition("email = ?", &user, form.Email)
+	err1, _ := u.db.GetWithCondition("email = ?", &user, form.Email)
 	if err1 != nil {
 		return &user, 400, fmt.Errorf("invalid credentials")
 	}
@@ -123,12 +119,12 @@ func (u *User) Login(ctx context.Context, form model.LoginRequestModel) (*model.
 		return &user, 500, err
 	}
 
-	err = service.UpdateWithCondition("id = ?", model.User{Token: token, TokenExpires: expiry}, &user, user.ID)
+	err = u.db.UpdateWithCondition("id = ?", model.User{Token: token, TokenExpires: expiry}, &user, user.ID)
 	if err != nil {
 		return &user, 500, err
 	}
 
-	_, err = service.GetWithCondition("user_id = ?", &wallet, user.ID)
+	_, err = u.db.GetWithCondition("user_id = ?", &wallet, user.ID)
 	if err != nil {
 		return &user, 500, err
 	}

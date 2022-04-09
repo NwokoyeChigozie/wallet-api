@@ -9,7 +9,6 @@ import (
 
 	"github.com/NwokoyeChigozie/quik_task/internal/model"
 	"github.com/NwokoyeChigozie/quik_task/pkg/middleware"
-	"github.com/NwokoyeChigozie/quik_task/pkg/repository/storage"
 	"github.com/NwokoyeChigozie/quik_task/pkg/repository/storage/mysql"
 	"github.com/NwokoyeChigozie/quik_task/pkg/repository/storage/redis"
 	mRedis "github.com/go-redis/redis/v8"
@@ -30,15 +29,13 @@ func NewWallet() *Wallet {
 
 func (w *Wallet) GetWallet(ctx context.Context, walletID int) (*model.Wallet, int, error) {
 	var (
-		wallet   = model.Wallet{}
-		dService = storage.NewMysqlStorageService(&w.db)
-		rService = storage.NewRedisStorageService(&w.rdb)
-		keyName  = getWalletKeyName(walletID)
+		wallet  = model.Wallet{}
+		keyName = getWalletKeyName(walletID)
 	)
 
-	serialized, err := rService.RedisGet(keyName)
+	serialized, err := w.rdb.RedisGet(keyName)
 	if err == mRedis.Nil {
-		_, err := dService.GetWithCondition("id = ?", &wallet, walletID)
+		_, err := w.db.GetWithCondition("id = ?", &wallet, walletID)
 		if err != nil {
 			return &wallet, 500, err
 		}
@@ -46,7 +43,7 @@ func (w *Wallet) GetWallet(ctx context.Context, walletID int) (*model.Wallet, in
 		if err != nil {
 			return &wallet, 500, err
 		}
-		err = rService.RedisSet(keyName, wallet)
+		err = w.rdb.RedisSet(keyName, wallet)
 		if err != nil {
 			return &wallet, 500, err
 		}
@@ -65,9 +62,9 @@ func (w *Wallet) GetWallet(ctx context.Context, walletID int) (*model.Wallet, in
 		return &wallet, http.StatusUnauthorized, fmt.Errorf("access Denied")
 	}
 
-	go func(walletID int, keyName string, rService storage.RedisStorageService) {
+	go func(walletID int, keyName string, rdb redis.Redis) {
 		gWallet := model.Wallet{}
-		_, err := dService.GetWithCondition("id = ?", &gWallet, walletID)
+		_, err := w.db.GetWithCondition("id = ?", &gWallet, walletID)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -75,21 +72,20 @@ func (w *Wallet) GetWallet(ctx context.Context, walletID int) (*model.Wallet, in
 		if err != nil {
 			fmt.Println(err)
 		}
-		err = rService.RedisSet(keyName, gWallet)
+		err = rdb.RedisSet(keyName, gWallet)
 		if err != nil {
 			fmt.Println(err)
 		}
-	}(walletID, keyName, rService)
+	}(walletID, keyName, w.rdb)
 
 	return &wallet, 200, nil
 }
 
 func (w *Wallet) CreditWallet(ctx context.Context, form model.DebitOrCreditWalletRequest, walletID int) (*model.Wallet, int, error) {
 	var (
-		wallet   = model.Wallet{}
-		dService = storage.NewMysqlStorageService(&w.db)
+		wallet = model.Wallet{}
 	)
-	_, err := dService.GetWithCondition("id = ?", &wallet, walletID)
+	_, err := w.db.GetWithCondition("id = ?", &wallet, walletID)
 	if err != nil {
 		return &wallet, 500, err
 	}
@@ -103,7 +99,7 @@ func (w *Wallet) CreditWallet(ctx context.Context, form model.DebitOrCreditWalle
 	wallet.WalletBalance = wallet.WalletBalance.Add(reqAmount)
 	wallet.Balance = wallet.WalletBalance.String()
 
-	err = dService.UpdateWithCondition("id = ?", model.Wallet{Balance: wallet.Balance}, &wallet, walletID)
+	err = w.db.UpdateWithCondition("id = ?", model.Wallet{Balance: wallet.Balance}, &wallet, walletID)
 	if err != nil {
 		return &wallet, 500, err
 	}
@@ -114,10 +110,9 @@ func (w *Wallet) CreditWallet(ctx context.Context, form model.DebitOrCreditWalle
 
 func (w *Wallet) DebitWallet(ctx context.Context, form model.DebitOrCreditWalletRequest, walletID int) (*model.Wallet, int, error) {
 	var (
-		wallet   = model.Wallet{}
-		dService = storage.NewMysqlStorageService(&w.db)
+		wallet = model.Wallet{}
 	)
-	_, err := dService.GetWithCondition("id = ?", &wallet, walletID)
+	_, err := w.db.GetWithCondition("id = ?", &wallet, walletID)
 	if err != nil {
 		return &wallet, 500, err
 	}
@@ -136,7 +131,7 @@ func (w *Wallet) DebitWallet(ctx context.Context, form model.DebitOrCreditWallet
 	wallet.WalletBalance = wallet.WalletBalance.Sub(reqAmount)
 	wallet.Balance = wallet.WalletBalance.String()
 
-	err = dService.UpdateWithCondition("id = ?", model.Wallet{Balance: wallet.Balance}, &wallet, walletID)
+	err = w.db.UpdateWithCondition("id = ?", model.Wallet{Balance: wallet.Balance}, &wallet, walletID)
 	if err != nil {
 		return &wallet, 500, err
 	}
