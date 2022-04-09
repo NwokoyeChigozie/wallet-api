@@ -6,4 +6,6 @@
 
 ### To run the codebase, you can either run "go run ./" or "go run main.go"
 
+#### NB: You need a mysql database and a redis database to be able to run the codebase
+
 ### To run the unit tests, run "go test ./..."
